@@ -1,7 +1,8 @@
 import "./App.css";
+import Home from "./components/Home";
 
 function App() {
-  return <>3D Ecommerce</>;
+  return <Home />;
 }
 
 export default App;
