@@ -2,37 +2,61 @@ import { useFrame, useLoader, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/Addons.js";
 import { CameraControls, ContactShadows } from "@react-three/drei";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
+import { useRecoilState } from "recoil";
+import { selectedColorState, selectedMeshState } from "@src/atoms/Atoms";
+import Constants from "@src/Constants";
 
 function ShowRoom() {
-  const { raycaster } = useThree();
+  const { raycaster, scene } = useThree();
   const glb = useLoader(GLTFLoader, "./models/custom.glb");
   const cameraControlsRef = useRef<CameraControls>(null);
-  const [isFitting, setIsFitting] = useState(false);
+  // const [isFitting, setIsFitting] = useState(false);
+  const [selectedColor] = useRecoilState(selectedColorState);
+  const [selectedMesh, setSelectedMesh] = useRecoilState(selectedMeshState);
 
   useEffect(() => {
-    cameraControlsRef.current!.setTarget(0, 0, 0, false);
-    cameraControlsRef.current!.addEventListener("control", () => {
-      setIsFitting(true);
-    });
-
-    cameraControlsRef.current!.addEventListener("sleep", () => {
-      setIsFitting(false);
-    });
+    // cameraControlsRef.current!.addEventListener("control", () => {
+    //   setIsFitting(true);
+    // });
+    // cameraControlsRef.current!.addEventListener("sleep", () => {
+    //   setIsFitting(false);
+    // });
   });
 
-  let angle = 0;
-  const dis = 2.0;
-  useFrame(() => {
-    if (!isFitting) {
-      cameraControlsRef.current!.setPosition(
-        dis * Math.sin(angle),
-        0.8,
-        dis * Math.cos(angle),
-        true
+  useEffect(() => {
+    glb.scene.traverse((item: any) => {
+      if (item.name === "Vamp_Left") {
+        const itemMaterial = item.material as THREE.MeshStandardMaterial;
+        const cloneMaterial = itemMaterial.clone();
+        item.material = cloneMaterial;
+        setSelectedMesh(item.name);
+      }
+    });
+  }, [glb.scene]);
+
+  useEffect(() => {
+    if (selectedMesh) {
+      const obj = scene.getObjectByName(selectedMesh) as THREE.Mesh;
+      const material = obj.material as THREE.MeshStandardMaterial;
+      material.color = new THREE.Color(
+        Constants.COLOR_ARRAY[selectedColor].color
       );
-      angle += 0.01;
     }
+  }, [selectedColor]);
+
+  // let angle = 0;
+  // const dis = 2.0;
+  useFrame(() => {
+    // if (!isFitting) {
+    //   cameraControlsRef.current!.setPosition(
+    //     dis * Math.sin(angle),
+    //     0.8,
+    //     dis * Math.cos(angle),
+    //     true
+    //   );
+    //   angle += 0.01;
+    // }
 
     const right = glb.scene.children[0];
     const left = glb.scene.children[1];
@@ -52,10 +76,17 @@ function ShowRoom() {
       const firstMaterial = firstObject.material as THREE.MeshStandardMaterial;
 
       const cloneMaterial = firstMaterial.clone();
-      cloneMaterial.color = new THREE.Color("red");
+      // cloneMaterial.color = new THREE.Color(
+      //   Constants.COLOR_ARRAY[selectedColor].color
+      // );
+      cloneMaterial.emissive = new THREE.Color("#B7F2F1");
+      setTimeout(() => {
+        cloneMaterial.emissive = new THREE.Color("black");
+      }, 500);
       firstObject.material = cloneMaterial;
 
-      cameraControlsRef.current!.fitToBox(firstObject, true).then();
+      cameraControlsRef.current!.fitToBox(firstObject, true);
+      setSelectedMesh(firstObject.name);
     }
   }
 
@@ -67,8 +98,8 @@ function ShowRoom() {
         ref={cameraControlsRef}
         dollyToCursor={true}
         enabled={true}
-        minDistance={0.5}
-        maxDistance={10}
+        minDistance={1}
+        maxDistance={2}
       />
 
       <mesh position={[0, -0.51, 0]} scale={5}>
